@@ -1,0 +1,55 @@
+#define CONST_UART C7
+#define UART_THR 0
+#define UART_RBR 0
+#define UART_IER 4
+#define UART_IIR 8
+#define UART_FCR 8
+#define UART_LCR 12
+#define UART_MCR 16
+#define UART_LSR 20
+#define UART_MSR 24
+#define UART_SCR 28
+#define UART_DLL 32
+#define UART_DLH 36
+#define UART_REVID1 40
+#define UART_REVID2 44
+#define UART_PWREMU_MGMT 48
+#define UART_MDR 52
+
+
+
+#define ddr_pointer r0
+#define buffer_length r1
+#define command r2
+
+#define counter r10
+#define lsr_register r9
+#define dmx_data r12
+#define temp_dmx2 r13
+#define dmx_max_length r14
+#define iir_register r15
+
+#include "common.p.h"
+
+#define LOADCOMMAND LBCO command, CONST_PRUDRAM, 8, 4
+#define BREAKCHECKCOMMAND QBEQ EXIT, command, 0xFF
+#define LOADREG(d,r) LBCO d, C7, r, 4
+//.macro  LOADREG
+//.mparam reg
+//    LBCO    r15 ,C7,reg,4
+//.endm
+
+#define WRITEREG(d,r) SBCO d, C7, r, 4
+//.macro  WRITEREG
+//.mparam dest,reg
+//    SBCO    dest,C7,reg,4
+//.endm
+
+.macro  ZERODMXBUFFER
+    MOV r4, 12
+    MOV r5, 0
+START1:
+    SBCO  r5, CONST_PRUDRAM, r4, 4
+    ADD r4,r4,4
+    QBEC START1 r4, 128
+.endm

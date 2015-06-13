@@ -1,0 +1,173 @@
+// WS281x Signal Generation PRU Program Template
+//
+
+//
+//
+
+// Mapping lookup
+
+.origin 0
+.entrypoint START
+
+#include "dmxrec.hp"
+
+#define CHECK_TIMEOUT WAIT_TIMEOUT 3000, FRAME_DONE
+
+START:
+	// Enable OCP master port
+	// clear the STANDBY_INIT bit in the SYSCFG register,
+	// otherwise the PRU will not be able to write outside the
+	// PRU memory space and to the BeagleBon's pins.
+	LBCO	r0, C4, 4, 4
+	CLR		r0, r0, 4
+	SBCO	r0, C4, 4, 4
+
+	// Configure the programmable pointer register for PRU0 by setting
+	// c28_pointer[15:0] field to 0x0120.  This will make C28 point to
+	// 0x00012000 (PRU shared RAM).
+	MOV		r0, 0x00000120
+	MOV		r1, CTPPR_0
+	ST32	r0, r1
+
+	// Configure the programmable pointer register for PRU0 by setting
+	// c31_pointer[15:0] field to 0x0010.  This will make C31 point to
+	// 0x80001000 (DDR memory).
+	MOV		r0, 0x00100000
+	MOV		r1, CTPPR_1
+	ST32	r0, r1
+
+	//Setup UART for Serial-Receive
+	
+
+	
+	//Set Baudrate to 250 000Hz -> 192 000 000/16/48 = 250 000
+	//set 48
+	MOV r0, #0x30
+	WRITEREG(r0,UART_DLL)
+
+	MOV r0, #0x0
+	WRITEREG(r0, UART_DLH)
+ 
+	//set 16
+	MOV r0, #0x0
+	WRITEREG(r0,UART_MDR)
+	
+	//Chose Serial Format (1 StartBit | 8 DataBits | 2 StopBITS)
+	MOV r0, 3
+	WRITEREG(r0,UART_LCR)
+
+	//FIFO einstellen
+	MOV r0, 0
+	SET r0, 0 
+	WRITEREG(r0,UART_FCR)
+	SET r0, 1
+	SET r0, 2
+	WRITEREG(r0,UART_FCR)	
+	
+	//INTERRUPTS
+	MOV r0, 0
+	SET r0, 0
+	SET r0, 2
+	WRITEREG(r0,UART_IER)
+
+	// Write a 0x1 into the response field so that they know we have started
+	MOV r2, #0x1
+	SBCO r2, CONST_PRUDRAM, 12, 4
+
+
+	MOV r20, 0xFFFFFFFF
+		
+	
+	
+
+
+
+
+
+
+
+	// Wait for the start condition from the main program to indicate
+	// that we have a rendered frame ready to clock out.  This also
+	// handles the exit case if an invalid value is written to the start
+	// start position.
+_LOOP:
+	// Let ledscape know that we're starting the loop again. It waits for this
+	// interrupt before sending another frame
+	RAISE_ARM_INTERRUPT
+	// Load the pointer to the buffer from PRU DRAM into r0 and the
+	// length (in bytes-bit words) into r1.
+	// start command into r2
+	LBCO      r_data_addr, CONST_PRUDRAM, 0, 12
+
+	// Wait for a non-zero command
+	QBEQ _LOOP, r2, #0
+
+	// Reset the sleep timer
+	RESET_COUNTER
+
+	// Zero out the start command so that they know we have received it
+	// This allows maximum speed frame drawing since they know that they
+	// can now swap the frame buffer pointer and write a new start command.
+	MOV r3, 0
+	SBCO r3, CONST_PRUDRAM, 8, 4
+	MOV dmx_data, 25
+	SBCO dmx_data, CONST_PRUDRAM, 16, 4
+	// Command of 0xFF is the signal to exit
+	QBEQ EXIT, r2, #0xFF
+
+	
+UARTSTART:
+	//Enable Rx and Tx, running in Free-Mode
+	LOADREG(r0, UART_PWREMU_MGMT)
+	//MOV r0,0x6001
+	SET r0, 0
+	WRITEREG(r0,UART_PWREMU_MGMT)
+	SET r0, 13
+	SET r0, 14
+	WRITEREG(r0,UART_PWREMU_MGMT)
+	LBCO dmx_data,C7, 0,4
+
+	MOV counter, 0
+	MOV counter2, 0
+	MOV lsr_register, 0
+	MOV iir_register, 0
+	MOV dmx_data, 0
+	SBCO dmx_data, CONST_PRUDRAM, 16, 4
+	SBCO lsr_register, CONST_PRUDRAM, 20, 4
+	SBCO iir_register, CONST_PRUDRAM, 20, 4
+	SBCO counter, CONST_PRUDRAM, 28, 4
+	SBCO counter2, CONST_PRUDRAM, 32, 4
+
+WAITDATA:
+	LOADCOMMAND
+	BREAKCHECKCOMMAND
+	LBCO dmx_data,C7, 0,4
+	LOADREG(iir_register, UART_IIR)
+	LOADREG(lsr_register, UART_LSR)
+	//SBCO lsr_register, CONST_PRUDRAM, 20, 4
+	ADD counter2, counter2, 1
+	QBBC WAITDATA, iir_register, 0
+	QBBS WAITDATA, lsr_register, 0
+	//Data ready
+	LBCO dmx_data,C7, 0,4
+	ADD counter,counter,1
+	SBCO dmx_data, CONST_PRUDRAM, 16, 4
+	SBCO iir_register, CONST_PRUDRAM, 20, 4
+	SBCO lsr_register, CONST_PRUDRAM, 24, 4
+	SBCO counter, CONST_PRUDRAM, 28, 4
+	SBCO counter2, CONST_PRUDRAM, 32, 4
+	QBA WAITDATA
+	
+
+EXIT:
+	// Write a 0xFF into the response field so that they know we're done
+	MOV r2, #0xFF
+	SBCO r2, CONST_PRUDRAM, 12, 4
+	//Disable UArt before Halting
+	LOADREG(r0,UART_PWREMU_MGMT)
+	MOV r0, #0x0
+	WRITEREG(r0,UART_PWREMU_MGMT)
+	
+	RAISE_ARM_INTERRUPT
+
+	HALT

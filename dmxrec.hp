@@ -1,0 +1,130 @@
+#define CONST_UART C7
+
+///THR REGISTER
+#define UART_THR 0x0
+#define UART_THR_WRITE(r) SBCO r, CONST_UART, UART_THR, 4
+
+///RBR REGISTER
+#define UART_RBR 0x0
+#define UART_RBR_READ(r) LBCO r, CONST_UART, UART_RBR, 4
+
+//IER REGISTER
+#define UART_IER 0x4
+#define UART_ERBI 0
+#define UART_ETBEI 1
+#define UART_ELSI 2
+#define UART_EDSSI 3
+#define UART_IER_WRITE(r) SBCO r, CONST_UART, UART_IER, 4
+
+//IIR REGISTER
+#define UART_IIR 0x8
+#define UART_IPEND 0
+#define UART_INITID1 1
+#define UART_INITID2 2
+#define UART_INITID3 3
+#define UART_FIFOEN1 6
+#define UART_FIFOEN2 7
+#define UART_IIR_READ(r) LBCO r, CONST_UART, UART_IIR, 4
+
+//FCR REGISTER
+#define UART_FCR 0x8
+#define UART_FIFOEN 0
+#define UART_RXCLR 1
+#define UART_TXCLR 2
+#define UART_DMAMODE1 3
+#define UART_RXFIFTL1 6
+#define UART_RXFIFTL2 7
+#define UART_FCR_WRITE(r) SBCO r, CONST_UART, UART_FCR, 4
+
+//LCR REGISTER
+#define UART_LCR 0xC
+#define UART_WLS1 0
+#define UART_WLS2 1
+#define UART_STB 2
+#define UART_PEN 3
+#define UART_EPS 4
+#define UART_SP 5
+#define UART_BC 6
+#define UART_DLAB 7
+#define UART_LCR_WRITE(r) SBCO r, CONST_UART, UART_LCR, 4
+
+//MCR REGISTER
+#define UART_MCR 0x10
+#define UART_RTS 1
+#define UART_OUT1 2
+#define UART_OUT2 3
+#define UART_LOOP 4
+#define UART_AFE 5
+#define UART_MCR_WRITE(r) SBCO r, CONST_UART, UART_MCR, 4
+
+//LSR RSTER
+#define UART_LSR 0x14
+#define UART_DR 0
+#define UART_OE 1
+#define UART_PE 2
+#define UART_FE 3
+#define UART_BI 4
+#define UART_THRE 5
+#define UART_TEMT 6
+#define UART_RXFIFOE 7
+#define UART_LSR_READ(r) LBCO r, CONST_UART, UART_LSR, 4
+
+//MSR REGISTER
+#define UART_MSR 0x18
+
+//SCR REGISTER
+#define UART_SCR 0x1C
+
+//DLL REGISTER
+#define UART_DLL 0x20
+#define UART_DLL_WRITE(r) SBCO r, CONST_UART, UART_DLL, 4
+
+//DLH REGISTER
+#define UART_DLH 0x24
+#define UART_DLH_WRITE(r) SBCO r, CONST_UART, UART_DLH, 4
+
+
+#define UART_REVID1 0x28
+#define UART_REVID2 0x2c
+
+//PWR REGISTER
+#define UART_PWREMU_MGMT 0x30
+#define UART_FREE 0
+#define UART_URRST 13
+#define UART_UTRST 14
+#define UART_PWR_WRITE(r) SBCO r, CONST_UART, UART_PWREMU_MGMT, 4
+
+#define UART_MDR 0x34
+#define UART_OSM_SEL 0
+#define UART_MDR_WRITE(r) SBCO r, CONST_UART, UART_MDR, 4
+
+
+#define ddr_pointer r0
+#define buffer_length r1
+#define command r2
+
+#define counter r10
+#define lsr_register r9
+#define dmx_data r18
+#define counter2 r13
+#define write_pos r14
+#define iir_register r15
+
+#include "common.p.h"
+
+#define LOADCOMMAND LBCO command, CONST_PRUDRAM, 8, 4
+#define BREAKCHECKCOMMAND QBEQ EXIT, command, 0xFF
+#define LOADREG(d,r) LBCO d, C7, r, 4
+
+
+#define WRITEREG(d,r) SBCO d, C7, r, 4
+
+.macro  ZERODMXBUFFER
+    MOV r4, 36
+	MOV r6, 1024
+REDO:
+    MOV r5, 0
+	SBCO  r5, CONST_PRUDRAM, r4, 1
+	ADD r4, r4, 1
+	QBGT REDO, r4, r6
+.endm

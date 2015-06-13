@@ -1,0 +1,8 @@
+extern "C" {
+#include "ledscape.h"
+}
+
+int main() {
+
+	return 0;
+}
