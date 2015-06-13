@@ -36,6 +36,7 @@ int main() {
 	dmxChannels_t* dataram = (dmxChannels_t*)leds->pru1->data_ram;
 	uint8_t* inDmx512 = (uint8_t*)leds->pru1->data_ram;
 	inDmx512 += 40;
+	uint8_t* outDMX512 = inDmx512 + 512;
 	ledscape_frame(leds, 0);
 	cout << dataram->response << endl;
 	dataram->command = 1;
